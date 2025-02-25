@@ -27,9 +27,10 @@ def get_sp500_tickers():
 # Step 2: Fetch stock data using yfinance
 def get_stock_data(tickers):
     stock_data = []
-    time.sleep(1.5)
-
+    
+    sleepy_time = 1.5
     for i,item in enumerate(tickers):
+        time.sleep(sleepy_time)
         if i % 30 == 0:
             time.sleep(15)
         ticker = item["Symbol"]
@@ -63,9 +64,11 @@ def get_stock_data(tickers):
                 "Cash on Hand": cash_on_hand,
                 "6M Peak Price": peak_6m
             })
+            sleepy_time = 1.5
         except Exception as e:
             print(f"Error fetching {ticker}: {e}")
-
+            if 'Try after a while' in str(e):
+                sleepy_time = 10
     return pd.DataFrame(stock_data)
 
 
