@@ -74,6 +74,7 @@ except:
     with open('S_P_500.json', 'r') as f:
         sp500_tickers = json.load(f)
 stock_prices_df = get_stock_data(sp500_tickers)
+print("Got All Stocks Data")
 
 stock_prices_df['Market Cap'] = stock_prices_df['Market Cap'].astype(int)
 stock_prices_df['Cash on Hand'] = stock_prices_df['Cash on Hand'].astype(int)
@@ -159,6 +160,7 @@ email_body = f"""
 
 # Send email
 recipient_emails = [os.getenv("KG"),os.getenv("DRE"),os.getenv("JAMES"),os.getenv("STEPH")]  # Replace with the actual recipient email
+print("Sending email")
 send_email("📈 S&P 500 Stock Data Report", email_body, recipient_emails)
 
 
