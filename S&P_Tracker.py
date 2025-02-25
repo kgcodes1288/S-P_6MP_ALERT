@@ -29,7 +29,9 @@ def get_stock_data(tickers):
     stock_data = []
     time.sleep(1.5)
 
-    for item in tickers:
+    for i,item in enumerate(tickers):
+        if i % 30 == 0:
+            time.sleep(15)
         ticker = item["Symbol"]
         company_name = item["Security"]
         try:
@@ -76,8 +78,6 @@ except:
 stock_prices_df = get_stock_data(sp500_tickers)
 print("Got All Stocks Data")
 
-stock_prices_df['Market Cap'] = stock_prices_df['Market Cap'].astype(int)
-stock_prices_df['Cash on Hand'] = stock_prices_df['Cash on Hand'].astype(int)
 
 stock_prices_df['Change from 6 month Peak'] = stock_prices_df.apply(lambda r: (r['Price']-r['6M Peak Price'])/r['6M Peak Price'], axis=1)
 stock_prices_df = stock_prices_df.sort_values(by=['Change from 6 month Peak'],ascending=True)
