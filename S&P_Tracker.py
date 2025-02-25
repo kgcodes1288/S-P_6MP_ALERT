@@ -21,7 +21,7 @@ def get_sp500_tickers():
     df = pd.read_html(str(table))[0]  # Read into a DataFrame
     tickers = df[["Symbol", "Security"]].to_dict(orient="records")
 
-    return tickers  # Limiting to 50 tickers for efficiency
+    return tickers  
 
 
 # Step 2: Fetch stock data using yfinance
@@ -84,7 +84,6 @@ print("Got All Stocks Data")
 
 stock_prices_df['Change from 6 month Peak'] = stock_prices_df.apply(lambda r: (r['Price']-r['6M Peak Price'])/r['6M Peak Price'], axis=1)
 stock_prices_df = stock_prices_df.sort_values(by=['Change from 6 month Peak'],ascending=True)
-stock_prices_df['Change from 6 month Peak'] = stock_prices_df['Change from 6 month Peak'].apply(lambda x: f"{x:.2%}" )
 stock_prices_df = stock_prices_df.head(50)
 
 # Set locale for USD formatting
@@ -96,8 +95,9 @@ def format_currency(value):
         return locale.currency(value, grouping=True)
     return value
 
-for cols in ['Price','Market Cap','EPS','Cash on Hand','6M Peak Price']:
-    stock_prices_df[cols] = stock_prices_df[cols].apply(lambda x: format_currency(x))
+def format_percentage(value):
+    return f"{value:.2%}"
+
 
 GMAIL_USER = os.getenv("GMAIL_USER")
 GMAIL_PASS = os.getenv("GMAIL_PASS")
@@ -107,7 +107,7 @@ GMAIL_PASS = os.getenv("GMAIL_PASS")
 
 def dataframe_to_html(df):
     df_html = '<table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; font-family: Arial;">'
-    df_html += "<tr style='background-color: #f2f2f2;'><th>Company Name</th><th>Ticker</th><th>Price</th><th>Market Cap</th><th>EPS</th><th>Cash on Hand</th><th>6M Peak Price</th></tr>"
+    df_html += "<tr style='background-color: #f2f2f2;'><th>Company Name</th><th>Ticker</th><th>Price</th><th>Market Cap</th><th>EPS</th><th>Cash on Hand</th><th>6M Peak Price</th><th>Change from 6 month Peak</th></tr>"
 
     for _, row in df.iterrows():
         # Apply color coding based on value
@@ -122,11 +122,12 @@ def dataframe_to_html(df):
         <tr>
             <td>{row['Company Name']}</td>
             <td>{row['Ticker']}</td>
-            <td style="color: {get_color(row['Price'])};">{format_currency(row['Price'])}</td>
-            <td style="color: {get_color(row['Market Cap'])};">{format_currency(row['Market Cap'])}</td>
+            <td>{format_currency(row['Price'])}</td>
+            <td>{format_currency(row['Market Cap'])}</td>
             <td style="color: {get_color(row['EPS'])};">{format_currency(row['EPS'])}</td>
-            <td style="color: {get_color(row['Cash on Hand'])};">{format_currency(row['Cash on Hand'])}</td>
-            <td style="color: {get_color(row['6M Peak Price'])};">{format_currency(row['6M Peak Price'])}</td>
+            <td">{format_currency(row['Cash on Hand'])}</td>
+            <td">{format_currency(row['6M Peak Price'])}</td>
+            <td style="color: {get_color(row['Change from 6 month Peak'])};">{format_percentage(row['Change from 6 month Peak'])}</td>
         </tr>
         """
     df_html += "</table>"
@@ -134,22 +135,23 @@ def dataframe_to_html(df):
 
 
 def send_email(subject, body, recipient_email):
-    msg = MIMEMultipart()
-    msg["From"] = GMAIL_USER
-    msg["To"] = recipient_email
-    msg["Subject"] = subject
+    for email in recipient_email:
+        msg = MIMEMultipart()
+        msg["From"] = GMAIL_USER
+        msg["To"] = email
+        msg["Subject"] = subject
 
-    msg.attach(MIMEText(body, "html"))
+        msg.attach(MIMEText(body, "html"))
 
-    try:
-        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
-            # server.starttls()
-            server.login(GMAIL_USER, GMAIL_PASS)
-            server.sendmail(GMAIL_USER, recipient_email, msg.as_string())
-            server.quit()
-        print("✅ Email sent successfully!")
-    except Exception as e:
-        print(f"❌ Failed to send email: {e}")
+        try:
+            with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+                # server.starttls()
+                server.login(GMAIL_USER, GMAIL_PASS)
+                server.sendmail(GMAIL_USER, email, msg.as_string())
+                server.quit()
+            print("✅ Email sent successfully!")
+        except Exception as e:
+            print(f"❌ Failed to send email: {e}")
 
 
 
@@ -164,6 +166,6 @@ email_body = f"""
 # Send email
 recipient_emails = [os.getenv("KG"),os.getenv("DRE"),os.getenv("JAMES"),os.getenv("STEPH")]  # Replace with the actual recipient email
 print("Sending email")
-send_email("📈 S&P 500 Stock Data Report", email_body, recipient_emails)
+send_email("📈 S&P 500 Stock Data Report Top 50 Opps", email_body, recipient_emails)
 
 
