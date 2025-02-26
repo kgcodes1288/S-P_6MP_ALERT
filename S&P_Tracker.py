@@ -7,7 +7,7 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import json, os
-import locale
+
 
 
 # Step 1: Get S&P 500 tickers from Wikipedia
@@ -92,14 +92,14 @@ stock_prices_df['Change from 6 month Peak'] = stock_prices_df.apply(lambda r: (r
 stock_prices_df = stock_prices_df.sort_values(by=['Change from 6 month Peak'],ascending=True)
 stock_prices_df = stock_prices_df.head(50)
 
-# Set locale for USD formatting
-locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
+
 
 # Function to format numbers as currency
 def format_currency(value):
     if isinstance(value, (int, float)) and value != "N/A":
-        return locale.currency(value, grouping=True)
+        return f"${value:,.2f}"  # Formats as "$1,234.56"
     return value
+
 
 def format_percentage(value):
     return f"{value:.2%}"
