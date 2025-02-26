@@ -82,6 +82,12 @@ stock_prices_df = get_stock_data(sp500_tickers)
 print("Got All Stocks Data")
 
 
+stock_prices_df = stock_prices_df[stock_prices_df['Price'] != 'N/A']
+stock_prices_df = stock_prices_df[~stock_prices_df['Price'].isna()]
+
+stock_prices_df = stock_prices_df[stock_prices_df['6M Peak Price'] != 'N/A']
+stock_prices_df = stock_prices_df[~stock_prices_df['6M Peak Price'].isna()]
+
 stock_prices_df['Change from 6 month Peak'] = stock_prices_df.apply(lambda r: (r['Price']-r['6M Peak Price'])/r['6M Peak Price'], axis=1)
 stock_prices_df = stock_prices_df.sort_values(by=['Change from 6 month Peak'],ascending=True)
 stock_prices_df = stock_prices_df.head(50)
