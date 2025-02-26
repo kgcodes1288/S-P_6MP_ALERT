@@ -41,6 +41,7 @@ def get_stock_data(tickers):
             price = stock.history(period="1d")["Close"].iloc[-1] if not stock.history(period="1d").empty else "N/A"
             market_cap = info.get("marketCap", "N/A")
             eps = info.get("trailingEps", "N/A")
+            pe_ratio = info.get("trailingPE", "N/A")
 
             # Fetch Cash on Hand from balance sheet
             balance_sheet = stock.balance_sheet
@@ -62,7 +63,8 @@ def get_stock_data(tickers):
                 "Market Cap": market_cap,
                 "EPS": eps,
                 "Cash on Hand": cash_on_hand,
-                "6M Peak Price": peak_6m
+                "6M Peak Price": peak_6m,
+                "PE Ratio": pe_ratio
             })
             sleepy_time = 1.5
         except Exception as e:
@@ -113,7 +115,7 @@ GMAIL_PASS = os.getenv("GMAIL_PASS")
 
 def dataframe_to_html(df):
     df_html = '<table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; font-family: Arial;">'
-    df_html += "<tr style='background-color: #f2f2f2;'><th>Company Name</th><th>Ticker</th><th>Price</th><th>Market Cap</th><th>EPS</th><th>Cash on Hand</th><th>6M Peak Price</th><th>Change from 6 month Peak</th></tr>"
+    df_html += "<tr style='background-color: #f2f2f2;'><th>Company Name</th><th>Ticker</th><th>Price</th><th>Market Cap</th><th>EPS</th><th>PE Ratio</th><th>Cash on Hand</th><th>6M Peak Price</th><th>Change from 6 month Peak</th></tr>"
 
     for _, row in df.iterrows():
         # Apply color coding based on value
@@ -131,6 +133,7 @@ def dataframe_to_html(df):
             <td>{format_currency(row['Price'])}</td>
             <td>{format_currency(row['Market Cap'])}</td>
             <td style="color: {get_color(row['EPS'])};">{format_currency(row['EPS'])}</td>
+            <td style="color: {get_color(row["PE Ratio"])};">{row["PE Ratio"]}</td>
             <td">{format_currency(row['Cash on Hand'])}</td>
             <td">{format_currency(row['6M Peak Price'])}</td>
             <td style="color: {get_color(row['Change from 6 month Peak'])};">{format_percentage(row['Change from 6 month Peak'])}</td>
