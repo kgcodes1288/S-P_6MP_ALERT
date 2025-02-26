@@ -21,7 +21,7 @@ def get_sp500_tickers():
     df = pd.read_html(str(table))[0]  # Read into a DataFrame
     tickers = df[["Symbol", "Security"]].to_dict(orient="records")
 
-    return tickers  
+    return tickers[:50]
 
 
 # Step 2: Fetch stock data using yfinance
@@ -42,6 +42,8 @@ def get_stock_data(tickers):
             market_cap = info.get("marketCap", "N/A")
             eps = info.get("trailingEps", "N/A")
             pe_ratio = info.get("trailingPE", "N/A")
+            sector = info["sector"]
+            industry = stock.info["industry"]
 
             # Fetch Cash on Hand from balance sheet
             balance_sheet = stock.balance_sheet
@@ -64,7 +66,9 @@ def get_stock_data(tickers):
                 "EPS": eps,
                 "Cash on Hand": cash_on_hand,
                 "6M Peak Price": peak_6m,
-                "PE Ratio": pe_ratio
+                "PE Ratio": pe_ratio,
+                "Sector": sector,
+                "Industry": industry
             })
             sleepy_time = 1.5
         except Exception as e:
@@ -91,9 +95,11 @@ stock_prices_df = stock_prices_df[stock_prices_df['6M Peak Price'] != 'N/A']
 stock_prices_df = stock_prices_df[~stock_prices_df['6M Peak Price'].isna()]
 
 stock_prices_df['Change from 6 month Peak'] = stock_prices_df.apply(lambda r: (r['Price']-r['6M Peak Price'])/r['6M Peak Price'], axis=1)
-stock_prices_df = stock_prices_df.sort_values(by=['Change from 6 month Peak'],ascending=True)
-stock_prices_df = stock_prices_df.head(50)
+stock_prices_df["Rank"] = stock_prices_df.groupby("Sector")["Change from 6 month Peak"].rank(method="dense", ascending=True)
 
+stock_prices_df = stock_prices_df[stock_prices_df["Rank"] <= 25]
+stock_prices_df = stock_prices_df.sort_values(by=['Sector','Rank'])
+stock_prices_df = stock_prices_df.drop(columns=['Rank'])
 
 
 # Function to format numbers as currency
@@ -115,7 +121,7 @@ GMAIL_PASS = os.getenv("GMAIL_PASS")
 
 def dataframe_to_html(df):
     df_html = '<table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; font-family: Arial;">'
-    df_html += "<tr style='background-color: #f2f2f2;'><th>Company Name</th><th>Ticker</th><th>Price</th><th>Market Cap</th><th>EPS</th><th>PE Ratio</th><th>Cash on Hand</th><th>6M Peak Price</th><th>Change from 6 month Peak</th></tr>"
+    df_html += "<tr style='background-color: #f2f2f2;'><th>Company Name</th><th>Ticker</th><th>Price</th><th>Market Cap</th><th>EPS</th><th>PE Ratio</th><th>Cash on Hand</th><th>6M Peak Price</th><th>Change from 6 month Peak</th><th>Industry</th></tr>"
 
     for _, row in df.iterrows():
         # Apply color coding based on value
@@ -137,6 +143,7 @@ def dataframe_to_html(df):
             <td">{format_currency(row['Cash on Hand'])}</td>
             <td">{format_currency(row['6M Peak Price'])}</td>
             <td style="color: {get_color(row['Change from 6 month Peak'])};">{format_percentage(row['Change from 6 month Peak'])}</td>
+            <td>{row['Industry']}</td>
         </tr>
         """
     df_html += "</table>"
@@ -163,18 +170,20 @@ def send_email(subject, body, recipient_email):
             print(f"❌ Failed to send email: {e}")
 
 
-
+email_body = "<h2>S&P 500 Stock Data by Sector</h2><br>"
 # Convert to HTML
-email_body = f"""
-<h2>S&P 500 Stock Data</h2>
-<p>Here is the latest stock data for selected S&P 500 companies:</p>
-{dataframe_to_html(stock_prices_df)}
-<p>Best regards,<br>Your Stock Bot</p>
-"""
+for sector in stock_prices_df['Sector'].unique():
+    temp = stock_prices_df[stock_prices_df['Sector'] ==sector]
+    email_body_temp = f"""
+    {dataframe_to_html(temp)}
+    """
+    email_body = email_body + '<h2>{}</h2>'.format(sector)
+    email_body = email_body + email_body_temp + '<br>'
 
+email_body = email_body + "<p>Best regards,<br>Your Stock Bot</p>"
 # Send email
 recipient_emails = [os.getenv("KG"),os.getenv("DRE"),os.getenv("JAMES"),os.getenv("STEPH")]  # Replace with the actual recipient email
 print("Sending email")
-send_email("📈 S&P 500 Stock Data Report Top 50 Opps", email_body, recipient_emails)
+send_email("📈 S&P 500 Stock Data Report Top 25 Opps per sector", email_body, recipient_emails)
 
 
