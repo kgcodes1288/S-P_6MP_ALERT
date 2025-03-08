@@ -7,6 +7,13 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import json, os
+from API import search
+
+# from dotenv import load_dotenv
+#
+# # Load environment variables from .env file
+# load_dotenv(os.getcwd() + '//.env')
+
 
 
 
@@ -21,7 +28,7 @@ def get_sp500_tickers():
     df = pd.read_html(str(table))[0]  # Read into a DataFrame
     tickers = df[["Symbol", "Security"]].to_dict(orient="records")
 
-    return tickers[:50]
+    return tickers
 
 
 # Step 2: Fetch stock data using yfinance
@@ -94,19 +101,30 @@ stock_prices_df = stock_prices_df[~stock_prices_df['Price'].isna()]
 stock_prices_df = stock_prices_df[stock_prices_df['6M Peak Price'] != 'N/A']
 stock_prices_df = stock_prices_df[~stock_prices_df['6M Peak Price'].isna()]
 
+#stockprices
+
+stock_prices_df = stock_prices_df[stock_prices_df['Sector'].isin(['Communication Services','Consumer Cyclical','Technology'])]
+stock_prices_df = stock_prices_df[~stock_prices_df['Industry'].isin(['Auto Parts','Travel Services','Advertising Agencies','Telecom Services'])]
+
+
 stock_prices_df['Change from 6 month Peak'] = stock_prices_df.apply(lambda r: (r['Price']-r['6M Peak Price'])/r['6M Peak Price'], axis=1)
 stock_prices_df["Rank"] = stock_prices_df.groupby("Sector")["Change from 6 month Peak"].rank(method="dense", ascending=True)
 
-stock_prices_df = stock_prices_df[stock_prices_df["Rank"] <= 25]
+stock_prices_df = stock_prices_df[stock_prices_df["Rank"] <= 10]
 stock_prices_df = stock_prices_df.sort_values(by=['Sector','Rank'])
 stock_prices_df = stock_prices_df.drop(columns=['Rank'])
 
 
 # Function to format numbers as currency
-def format_currency(value):
-    if isinstance(value, (int, float)) and value != "N/A":
-        return f"${value:,.2f}"  # Formats as "$1,234.56"
-    return value
+def format_currency(num):
+    if num >= 1_000_000_000_000:  # Trillions
+        return f"${num / 1_000_000_000_000:.2f}T"
+    elif num >= 1_000_000_000:  # Billions
+        return f"${num / 1_000_000_000:.2f}B"
+    elif num >= 1_000_000:  # Millions
+        return f"${num / 1_000_000:.2f}M"
+    else:  # Less than a million, show as is
+        return f"${num:.2f}"
 
 
 def format_percentage(value):
@@ -115,8 +133,6 @@ def format_percentage(value):
 
 GMAIL_USER = os.getenv("GMAIL_USER")
 GMAIL_PASS = os.getenv("GMAIL_PASS")
-
-
 
 
 def dataframe_to_html(df):
@@ -170,14 +186,28 @@ def send_email(subject, body, recipient_email):
             print(f"❌ Failed to send email: {e}")
 
 
+
+industry_answers = {}
+
+for industry in stock_prices_df['Industry'].unique():
+    question = """give me a short 2-3 sentence snippet of what happened in news today
+                for {} industry that affected the stock performance today? """
+    answer = search.get_result(industry)
+    industry_answers[industry] = answer
+
+
 email_body = "<h2>S&P 500 Stock Data by Sector</h2><br>"
 # Convert to HTML
-for sector in stock_prices_df['Sector'].unique():
+for sector in ['Technology','Communication Services','Consumer Cyclical']:
     temp = stock_prices_df[stock_prices_df['Sector'] ==sector]
+    email_body = email_body + '<h2>{}</h2>'.format(sector)
+    email_body = email_body + '<h3>What Happened Today?</h3><br>'
+    for industry in temp['Industry'].unique():
+        email_body = email_body + '<h4>{}</h4>'.format(industry)
+        email_body += '<p>' + industry_answers[industry] + '</p>'
     email_body_temp = f"""
     {dataframe_to_html(temp)}
     """
-    email_body = email_body + '<h2>{}</h2>'.format(sector)
     email_body = email_body + email_body_temp + '<br>'
 
 email_body = email_body + "<p>Best regards,<br>Your Stock Bot</p>"
