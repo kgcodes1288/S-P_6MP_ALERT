@@ -28,9 +28,7 @@ tools = [
 graph = create_react_agent(llm, tools=tools)
 # Run the agent with a query
 
-def get_result(industry):
-    query = """give me a short 2-3 sentence snippet of what happened in news today
-                    for {} industry that affected the stock performance today?""".format(industry)
+def get_result(query):
     inputs = {"messages": [("user", query)]}
     stream = graph.stream(inputs, stream_mode="values")
     for s in stream:

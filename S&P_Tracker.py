@@ -7,12 +7,18 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import json, os
-from API import search
-
+from datetime import datetime
 # from dotenv import load_dotenv
-#
 # # Load environment variables from .env file
 # load_dotenv(os.getcwd() + '//.env')
+
+today = str(datetime.today().date())
+
+
+from API import search
+
+
+
 
 
 
@@ -185,18 +191,26 @@ def send_email(subject, body, recipient_email):
         except Exception as e:
             print(f"❌ Failed to send email: {e}")
 
+overall_sentiment = search.get_result(query="""give me a short 2-3 sentence snippet of what happened in news today {0}
+                 that affected the stock performance today {0}?
+                 If there is nothing new today, you can just say No Big updates today""".format(today))
+
 
 
 industry_answers = {}
 
 for industry in stock_prices_df['Industry'].unique():
-    question = """give me a short 2-3 sentence snippet of what happened in news today
-                for {} industry that affected the stock performance today? """
-    answer = search.get_result(industry)
+    question = """give me a short 2-3 sentence snippet of what happened in news today {1}
+                for {0} industry that affected the stock performance today {1}?
+                 If there is nothing new today, you can just say No Big updates today""".format(industry,today)
+    answer = search.get_result(query=question)
     industry_answers[industry] = answer
 
 
 email_body = "<h2>S&P 500 Stock Data by Sector</h2><br>"
+
+email_body = email_body + '<br>' + '<h2>Overall Market News</h2><br>'
+email_body += '<p>' + overall_sentiment + '</p><br>'
 # Convert to HTML
 for sector in ['Technology','Communication Services','Consumer Cyclical']:
     temp = stock_prices_df[stock_prices_df['Sector'] ==sector]
